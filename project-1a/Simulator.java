@@ -111,12 +111,25 @@ public class Simulator {
 
 		sender.send(data);
 		byte[] received = receiver.retrieve();
-		System.out.println("Transmission received:  " + new String(received));
+		System.out.println("Transmission sent:  " + new String(data));
+		System.out.println("Transmission received:  " + new String(received)) ;
 		System.out.println("Transmission succeeded: " +
 				Arrays.equals(data, received));
 
 	} // simulate()
 		// =========================================================================
+
+
+	private static String convertByteArrayToString(byte[] data){
+		String bytesSent = "";
+		for(byte b : data){
+			String byteString = String.format("%8s", Integer.toBinaryString(b & 0xFF));
+			bytesSent += byteString;
+		}
+
+		return bytesSent;
+
+	}
 
 	// =============================================================================
 } // class Simulator
