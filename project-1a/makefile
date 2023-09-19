@@ -2,7 +2,7 @@ all: perfect noisy
 
 perfect: compile  
 	echo "simulating a transmission of data through a Perfect medium\n"
-	java Simulator Perfect Parity transmit.txt
+	java Simulator Perfect Dumb transmit.txt
 
 noisy: compile  
 	echo "simulating a transmission of data through a Perfect medium\n"

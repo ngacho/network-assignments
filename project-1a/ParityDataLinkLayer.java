@@ -1,7 +1,6 @@
 // =============================================================================
 // IMPORTS
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -10,26 +9,14 @@ import java.util.Queue;
 // =============================================================================
 /**
  * @file DumbDataLinkLayer.java
- * @author Peter B. Opondo (bngacho24@amherst.edu)
+ * @author Scott F. Kaplan (sfkaplan@cs.amherst.edu)
  * @date August 2018, original September 2004
  *
- * 
- *       Use a single, simple parity bit to detect one-bit errors on each frame
- *       Upon error-detection,
- *          appropriate method of this class should print an error message.
- *          show the (incorrect) data.
- *          don't deliver data to the receiving host.
- * 
- *      Set up the message into 5-bit chunks with 3 hamming codes 
- *      0 + powers of 2 - correction duty
- *      
- *      Each frame should not contain more than 8 bytes of data.
- *      Parity bits: 2^0, 2^1, 2^2, 2^3, 2^4, 2^5
- *          Each frame should have 42 data bits  + 8 start tag bits + 8 stop tag bits + 6 parity bits OR
-*           Each frame should have 34 data bits + x(8 escape tag bits) + 8 start tag bits + 8 stop tag bits + 6 parity bits
+ *       A data link layer that uses start/stop tags and byte packing to frame
+ *       the
+ *       data, and that performs no error management.
  */
 public class ParityDataLinkLayer extends DataLinkLayer {
-
     // =============================================================================
 
     // =========================================================================
@@ -37,75 +24,78 @@ public class ParityDataLinkLayer extends DataLinkLayer {
      * Embed a raw sequence of bytes into a framed sequence.
      *
      * @param data The raw sequence of bytes to be framed.
-     * @return A complete frame. [0, 1, 2, 3, 4, 5, 6, 7, 8] bytes of data.
+     * @return A complete frame.
      */
     protected byte[] createFrame(byte[] data) {
-
-    
-
         Queue<Byte> framingData = new LinkedList<Byte>();
 
-        framingData.add(parityByte);        
-        // Begin with the start tag.
-        framingData.add(startTag);
+        // get parity of each data byte.
+        int countBytes = 0;
+        int i = 0;
+        // sliding window.
+        while (i < data.length) {
+            byte parityByte = (byte) 0;
+            int j = i;
+            // add start tag
+            framingData.add(startTag);
+            System.out.println("starting frame.");
+            while (j < data.length && countBytes < maxDataInFrame) {
+                byte curr_data = data[j];
+                System.out.print(String.valueOf((char) (curr_data)));
+                // add to frame
+                framingData.add(curr_data);
 
-        int counter = 0;
+                // calculate the parity of this data
+                boolean parityFlag = checkParity(curr_data);
+                int parityBit = parityFlag ? 1 : 0;
 
-        // Add each byte of original data.
-        for (int i = 0; i < data.length; i += 1) {
-            // If the current data byte is itself synonymous with a metadata tag, then precede
-            // it with an escape tag.
-            byte currentByte = data[i];
-            if ((currentByte == startTag) ||
-                    (currentByte == stopTag) ||
-                    (currentByte == escapeTag) ||
-                    (currentByte == parityByte)) {
+                // move the parity bit to it's necessary position
+                byte parityBitPositioned =(byte) (parityBit << ((maxDataInFrame - (countBytes + 1))));
+                parityByte = (byte) (parityByte | parityBitPositioned);
+                countBytes += 1;
 
-                        if(counter >= 4){
-                            // end prev frame
-                            framingData.add(stopTag);
-                            // start new frame
-                            framingData.add(parityByte);
-                            framingData.add(startTag);
-                            counter = 0;
-                        }
-
-                framingData.add(escapeTag);
-                counter += 1;
-
+                // increment number of bytes
+                j += 1;
             }
 
-            if(counter >= 5){
-                // end prev frame
-                framingData.add(stopTag);
-                // start new frame
-                framingData.add(parityByte);
-                framingData.add(startTag);
-                counter = 0;
-
-            }
-
-            // Add the data byte itself.
-            framingData.add(currentByte);
-            counter += 1;
-
+            // reset count bytes
+            countBytes = 0;
+            // reassign i to j
+            i = j;
+            // add stop tag
+            framingData.add(stopTag);
+            // add parity byte
+            framingData.add((byte) (parityByte & 0xFF));    
+            System.out.println("\nParity byte for the frame is " + String.format("%8s", Integer.toBinaryString(parityByte & 0xFF)));
+            System.out.println("ending frame.\n");
         }
-
-        // End with a stop tag.
-        framingData.add(stopTag);
 
         // Convert to the desired byte array.
         byte[] framedData = new byte[framingData.size()];
-        Iterator<Byte> i = framingData.iterator();
+        Iterator<Byte> byteIter = framingData.iterator();
         int j = 0;
-        while (i.hasNext()) {
-            framedData[j++] = i.next();
+        while (byteIter.hasNext()) {
+            framedData[j++] = byteIter.next();
         }
+
+
+        System.out.println("Framed Data : " + new String(framedData));
 
         return framedData;
 
     } // createFrame ()
       // =========================================================================
+
+    private boolean checkParity(byte data) {
+        byte tempData = data;
+
+        boolean parityFlag = false;
+        while (tempData != 0) {
+            tempData &= (tempData - 1);
+            parityFlag = !parityFlag;
+        }
+        return parityFlag;
+    }
 
     // =========================================================================
     /**
@@ -193,15 +183,22 @@ public class ParityDataLinkLayer extends DataLinkLayer {
             j += 1;
         }
 
-        System.out.println("<=== Printing received data ===>");
-        for(byte dataByte : extractedData){
-            System.out.println(dataByte + " to string " + Character.toString((char) dataByte) );
-        }
-
         return extractedData;
 
     } // processFrame ()
       // ===============================================================
+
+    private String convertByteArrayToString(byte[] data){
+		String bytesSent = "";
+		for(byte b : data){
+            
+            String byteString = String.format("%8s", Integer.toBinaryString(b & 0xFF));
+			bytesSent += byteString;
+		}
+
+		return bytesSent;
+
+	}
 
     // ===============================================================
     private void cleanBufferUpTo(Iterator<Byte> end) {
@@ -212,56 +209,6 @@ public class ParityDataLinkLayer extends DataLinkLayer {
             i.remove();
         }
 
-    }
-
-    protected byte[][] splitDataIntoChunks(Queue<Byte> framingData){
-
-
-        return null;
-    }
-
-    protected byte[] addParity(byte[] data){
-
-        // TODO : byte with 8 or more bits
-
-        // Convert to the desired byte array.
-        byte[] framedData = new byte[data.length];
-        // add a parity check to each data byte.
-
-        for(int i = 0; i < data.length; i++){
-            byte dataByte = data[i];
-            int mask = 0xFF;
-            byte newData = addParityBit(dataByte);
-            framedData[i] = newData;
-            System.out.println("New data after parity: " + Integer.toBinaryString(newData & mask));
-        }
-
-
-        return framedData;
-    }
-
-    protected byte addParityBit(byte data){
-        byte tempData = data;
-        int mask = 0xFF;
-        boolean parityFlag = checkParity(tempData);
-        int parityBit = parityFlag ? 1 : 0;
-        // add parity bit to the data.
-        byte newData = (byte) ((parityBit << 7 | data) & mask);
-
-        return newData;
-    }
-
-    protected boolean checkParity(byte data){
-        byte tempData = data;
-
-        boolean parityFlag = false;
-        while(tempData != 0){
-            tempData &= (tempData - 1);
-            parityFlag = !parityFlag;
-        }
-
-
-        return parityFlag;
     }
     // ===============================================================
 
@@ -274,8 +221,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
     private final byte startTag = (byte) '{';
     private final byte stopTag = (byte) '}';
     private final byte escapeTag = (byte) '\\';
-    private final byte parityByte = (byte) 0xFF;
-    private final int maxFrameSize = 8;
+    private final byte maxDataInFrame = 8;
     // ===============================================================
 
     // ===================================================================
