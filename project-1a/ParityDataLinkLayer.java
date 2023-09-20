@@ -197,35 +197,47 @@ public class ParityDataLinkLayer extends DataLinkLayer {
             j += 1;
         }
 
-        for(int k = 0; k < extractedData.length; k++){
-            int expectedParity = getBit(frameParityByte, k) > 0 ? 1 : 0;
-            int actualParity = checkParity(extractedData[k]) ? 1 : 0;
-            
-            if(actualParity != expectedParity){
-                System.out.println("Error in frame : " + new String(extractedData));
-                return null;
-            }
-
-        }
+        if(!verifyParity(extractedData, frameParityByte)) return null;
 
         return extractedData;
 
     } // processFrame ()
       // ===============================================================
 
-      /** Given a parity byte and an array of bytes, determine if they match 
-       * Sample ([1001000 1100101 1101100 1101100 1101111 1110111 1101111 1110010]), 0 => true
-       * Sample ([1001000 1100101 1101100 1101100 1101111 1101110 1101111 1110010]), 100 => true because only arr[2] has an odd parity translating to 100.
-      */
-      
-      
+      /**
+       * This method verifies the parity of  a byte
+       * Sample ([1001000 1100101 1101100 1101100 1101111 1101110 1101111 1110010]), 100 => true 
+       * because only arr[2] has an odd parity translating to 100.
+       * 
+       * @param data [1001000 1100101 1101100 1101100 1101111 1110111 1101111 1110010]
+       * @param parityByte 0
+       * @return true or false
+       * 
+       */
+      private boolean verifyParity(byte[] data, byte parityByte){
+        for(int k = 0; k < data.length; k++){
+            int expectedParity = getBit(parityByte, k) > 0 ? 1 : 0;
+            int actualParity = checkParity(data[k]) ? 1 : 0;
+            
+            if(actualParity != expectedParity){
+                System.out.println("Error in frame : " + new String(data));
+                return false;
+            }
+
+        }
+
+
+        return true;
+      }
 
       /**
        * Given a byte, return the bit in the ith position
-       * @param data
-       * @param position
+       * @param data 100
+       * @param position 2
        * 
-       * @return bit in the ith position (left to right, 0 is left and 7 is right most bit)
+       * return 1
+       * 
+       * @return bit in the ith position (right to left, 0 is right most and 7 is left most)
        */
       public int getBit(byte data, int position){
         return (byte) ((data >> (7 - position)) & 1);
