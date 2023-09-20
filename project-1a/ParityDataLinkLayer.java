@@ -55,7 +55,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
                 int parityBit = parityFlag ? 1 : 0;
 
                 // move the parity bit to it's necessary position
-                byte parityBitPositioned =(byte) (parityBit << ((maxDataInFrame - (countBytes + 1))));
+                byte parityBitPositioned = (byte) (parityBit << ((maxDataInFrame - (countBytes + 1))));
                 parityByte = (byte) (parityByte | parityBitPositioned);
                 countBytes += 1;
 
@@ -84,7 +84,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
             framedData[j++] = byteIter.next();
         }
         System.out.println("Framed Data : " + new String(framedData));
-        // System.out.println(convertByteArrayToBinaryString(framedData));
+        System.out.println(convertByteArrayToBinaryString(framedData));
 
         return framedData;
 
@@ -113,6 +113,23 @@ public class ParityDataLinkLayer extends DataLinkLayer {
      *         data; <code>null</code> otherwise.
      */
     protected byte[] processFrame() {
+        // get the parity byte
+        boolean foundParityByte = false;
+        byte frameParityByte =  0;
+        Iterator<Byte> byteIter = byteBuffer.iterator();
+        while(!foundParityByte && byteIter.hasNext()){
+            byte curr = byteIter.next();
+            if(curr == stopTag){
+                if(byteIter.hasNext()){
+                    frameParityByte = (byte) (byteIter.next() & 0xFF);
+                    foundParityByte = true;
+                }else{
+                    // the tag after the frame should be present (byte Parity)
+                    return null;
+                }
+            }
+        }
+
 
         // Search for a start tag. Discard anything prior to it.
         boolean startTagFound = false;
@@ -188,10 +205,43 @@ public class ParityDataLinkLayer extends DataLinkLayer {
             j += 1;
         }
 
+        System.out.println("Extracted Data: " + new String(extractedData));
+        System.out.println(convertByteArrayToBinaryString(extractedData));
+        System.out.println("Byte parity is " + String.format("%8s", Integer.toBinaryString(frameParityByte & 0xFF)));
+
+        for(int k = 0; k < extractedData.length; k++){
+            int expectedParity = getBit(frameParityByte, k) > 0 ? 1 : 0;
+            int actualParity = checkParity(extractedData[k]) ? 1 : 0;
+            
+            if(actualParity != expectedParity){
+                System.out.println("Error in frame : " + new String(extractedData));
+                return null;
+            }
+
+        }
+
         return extractedData;
 
     } // processFrame ()
       // ===============================================================
+
+      /** Given a parity byte and an array of bytes, determine if they match 
+       * Sample ([1001000 1100101 1101100 1101100 1101111 1110111 1101111 1110010]), 0 => true
+       * Sample ([1001000 1100101 1101100 1101100 1101111 1101110 1101111 1110010]), 100 => true because only arr[2] has an odd parity translating to 100.
+      */
+      
+      
+
+      /**
+       * Given a byte, return the bit in the ith position
+       * @param data
+       * @param position
+       * 
+       * @return bit in the ith position
+       */
+      public int getBit(byte data, int position){
+        return (byte) ((data >> (7 - position)) & 1);
+      }
 
       
     private String convertByteArrayToBinaryString(byte[] data){
