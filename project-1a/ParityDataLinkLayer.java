@@ -1,10 +1,14 @@
 // =============================================================================
 // IMPORTS
 
+import java.util.Formatter;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
-// =============================================================================
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Level;
+// ===========================================================================
+import java.util.logging.Logger;
 
 // =============================================================================
 /**
@@ -17,6 +21,11 @@ import java.util.Queue;
  *       data, and that performs no error management.
  */
 public class ParityDataLinkLayer extends DataLinkLayer {
+    private Logger frameLogger;
+
+    public ParityDataLinkLayer(){
+        this.frameLogger = Logger.getLogger(this.getClass().getName());
+    }
     // =============================================================================
 
     // =========================================================================
@@ -116,6 +125,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
                     frameParityByte = (byte) (byteIter.next() & 0xFF);
                     foundParityByte = true;
                 }else{
+                    // frameLogger.log(Level.WARNING, "Parity Byte missing");
                     // the tag after the frame should be present (byte Parity)
                     return null;
                 }
@@ -137,6 +147,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
 
         // If there is no start tag, then there is no frame.
         if (!startTagFound) {
+            // frameLogger.log(Level.WARNING, "Missing start tag.");
             return null;
         }
 
@@ -177,8 +188,11 @@ public class ParityDataLinkLayer extends DataLinkLayer {
 
         // If there is no stop tag, then the frame is incomplete.
         if (!stopTagFound) {
+            // frameLogger.log(Level.WARNING, "Missing stop tag.");
             return null;
         }
+
+        // frameLogger.log(Level.INFO, "Got whole frame");
 
         // Convert to the desired byte array.
         if (debug) {
@@ -220,7 +234,9 @@ public class ParityDataLinkLayer extends DataLinkLayer {
             int actualParity = checkParity(data[k]) ? 1 : 0;
             
             if(actualParity != expectedParity){
-                System.out.println("Error in frame : " + new String(data));
+                String loggingMessage = "Frame " + new String(data) + " corrupted";
+                System.out.println(loggingMessage);
+                frameLogger.log(Level.SEVERE, loggingMessage);
                 return false;
             }
 
