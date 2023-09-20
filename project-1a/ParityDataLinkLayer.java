@@ -38,11 +38,8 @@ public class ParityDataLinkLayer extends DataLinkLayer {
             int j = i;
             // add start tag
             framingData.add(startTag);
-            System.out.println("starting frame." );
-            System.out.print("{");
             while (j < data.length && countBytes < maxDataInFrame) {
                 byte curr_data = data[j];
-                System.out.print(String.valueOf((char) (curr_data)));
                 if(curr_data == startTag || curr_data == stopTag || curr_data == escapeTag){
                     // add escape tag first
                     framingData.add(escapeTag);
@@ -71,9 +68,6 @@ public class ParityDataLinkLayer extends DataLinkLayer {
             framingData.add(stopTag);
             // add parity byte
             framingData.add((byte) (parityByte & 0xFF));    
-            System.out.print("}");
-            System.out.println("\nParity byte for the frame is " + String.format("%8s", Integer.toBinaryString(parityByte & 0xFF)));
-            System.out.println("ending frame.\n");
         }
 
         // Convert to the desired byte array.
@@ -83,8 +77,6 @@ public class ParityDataLinkLayer extends DataLinkLayer {
         while (byteIter.hasNext()) {
             framedData[j++] = byteIter.next();
         }
-        System.out.println("Framed Data : " + new String(framedData));
-        System.out.println(convertByteArrayToBinaryString(framedData));
 
         return framedData;
 
@@ -205,10 +197,6 @@ public class ParityDataLinkLayer extends DataLinkLayer {
             j += 1;
         }
 
-        System.out.println("Extracted Data: " + new String(extractedData));
-        System.out.println(convertByteArrayToBinaryString(extractedData));
-        System.out.println("Byte parity is " + String.format("%8s", Integer.toBinaryString(frameParityByte & 0xFF)));
-
         for(int k = 0; k < extractedData.length; k++){
             int expectedParity = getBit(frameParityByte, k) > 0 ? 1 : 0;
             int actualParity = checkParity(extractedData[k]) ? 1 : 0;
@@ -237,7 +225,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
        * @param data
        * @param position
        * 
-       * @return bit in the ith position
+       * @return bit in the ith position (left to right, 0 is left and 7 is right most bit)
        */
       public int getBit(byte data, int position){
         return (byte) ((data >> (7 - position)) & 1);
