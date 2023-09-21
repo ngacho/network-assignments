@@ -1,3 +1,4 @@
+
 // =============================================================================
 // IMPORTS
 import java.util.logging.ConsoleHandler;
@@ -8,7 +9,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 // ===========================================================================
-
 
 // =============================================================================
 /**
@@ -23,10 +23,54 @@ import java.util.Queue;
 public class ParityDataLinkLayer extends DataLinkLayer {
     private boolean isLogOn;
 
-    public ParityDataLinkLayer(){
+    public ParityDataLinkLayer() {
         this.isLogOn = debug;
     }
     // =============================================================================
+
+    @Override
+    public void send(byte[] data) {
+        Logger logger = Logger.getLogger("Send Data");
+        logger.setUseParentHandlers(false);
+        CustomLogFormatter formatter = new CustomLogFormatter();
+        ConsoleHandler handler = new ConsoleHandler();
+        handler.setFormatter(formatter);
+        logger.addHandler(handler);
+
+        if (!this.isLogOn) {
+            logger.setLevel(Level.OFF);
+        }
+
+        int i = 0;
+        while (i < data.length) {
+            int j = 0;
+            // send buffer
+            int sizeOfBuffer = (data.length - i) > data.length % 8 ? 8 : data.length % 8;
+            System.out.println("Print size of buffer:  " + sizeOfBuffer);
+            byte[] sendBuffer = new byte[sizeOfBuffer];
+            while (j < sizeOfBuffer) {
+                byte curr_data = data[i];
+                sendBuffer[j] = curr_data;
+                j++; // increment j
+                i++; // increment i
+
+            }
+
+            byte[] framedData = createFrame(sendBuffer);
+            for (byte dataByte : framedData) {
+                transmit(dataByte);
+            }
+            
+
+            // logger.info("Send String: => " + new String(sendBuffer));
+            // logger.info("Send Bytes: => " + convertByteArrayToBinaryString(sendBuffer));
+
+            System.out.println("Send String: => " + new String(sendBuffer));
+            // System.out.println("Send Bytes: => " + convertByteArrayToBinaryString(sendBuffer));
+
+        }
+
+    }
 
     // =========================================================================
     /**
@@ -38,58 +82,42 @@ public class ParityDataLinkLayer extends DataLinkLayer {
     protected byte[] createFrame(byte[] data) {
 
         Logger logger = Logger.getLogger("Create frame");
-        logger.setUseParentHandlers(false);        
+        logger.setUseParentHandlers(false);
         CustomLogFormatter formatter = new CustomLogFormatter();
         ConsoleHandler handler = new ConsoleHandler();
         handler.setFormatter(formatter);
         logger.addHandler(handler);
 
-        if(!this.isLogOn){
+        if (!this.isLogOn) {
             logger.setLevel(Level.OFF);
         }
 
-        Queue<Byte> framingData = new LinkedList<Byte>();
-
-        // get parity of each data byte.
-        int countBytes = 0;
-        int i = 0;
-        // sliding window.
-        while (i < data.length) {
-            byte parityByte = (byte) 0;
-            int j = i;
-            // add start tag
-            framingData.add(startTag);
-            while (j < data.length && countBytes < maxDataInFrame) {
-                byte curr_data = data[j];
-                if(curr_data == startTag || curr_data == stopTag || curr_data == escapeTag){
-                    // add escape tag first
-                    framingData.add(escapeTag);
-                }
-                // add to frame
-                framingData.add(curr_data);
-
-                // calculate the parity of this data
-                boolean parityFlag = checkParity(curr_data);
-                int parityBit = parityFlag ? 1 : 0;
-
-                // move the parity bit to it's necessary position
-                byte parityBitPositioned = (byte) (parityBit << ((maxDataInFrame - (countBytes + 1))));
-                parityByte = (byte) (parityByte | parityBitPositioned);
-                countBytes += 1;
-
-                // increment number of bytes
-                j += 1;
-            }
-
-            // reset count bytes
-            countBytes = 0;
-            // reassign i to j
-            i = j;
-            // add stop tag
-            framingData.add(stopTag);
-            // add parity byte
-            framingData.add((byte) (parityByte & 0xFF));    
+        byte parityByte = 0;
+        // calculate the parity of the data.
+        for (int i = 0; i < data.length; i++) {
+            int parityBit = checkParity(data[i]) ? 1 : 0;
+            byte parityBitPositioned = (byte) (parityBit << ((maxDataInFrame - (i + 1))));
+            parityByte = (byte) (parityByte | parityBitPositioned);
         }
+
+        logger.info("Frame received for data: " + new String(data));
+        logger.info("Frame received for bytes: " + convertByteArrayToBinaryString(data));
+        logger.info("Parity Byte is " + Integer.toBinaryString(parityByte & 0xff));
+
+        // add start, parity, data, and stop tags
+        Queue<Byte> framingData = new LinkedList<Byte>();
+        framingData.add(startTag);
+        framingData.add(parityByte);
+
+        for (byte dataByte : data) {
+            if (dataByte == startTag || dataByte == stopTag || dataByte == escapeTag) {
+                // add escape tag first
+                framingData.add(escapeTag);
+            }
+            framingData.add(dataByte);
+        }
+
+        framingData.add(stopTag);
 
         // Convert to the desired byte array.
         byte[] framedData = new byte[framingData.size()];
@@ -99,7 +127,9 @@ public class ParityDataLinkLayer extends DataLinkLayer {
             framedData[j++] = byteIter.next();
         }
 
-        logger.info("Processed " + new String(framedData));
+        // logger.info("Processed " + new String(framedData));
+        System.out.println("Processed " + new String(framedData));
+        // System.out.println("Processed Bytes: " + convertByteArrayToBinaryString(framedData));
 
         return framedData;
 
@@ -129,40 +159,19 @@ public class ParityDataLinkLayer extends DataLinkLayer {
      */
     protected byte[] processFrame() {
         Logger logger = Logger.getLogger("Process Frame");
-        logger.setUseParentHandlers(false);        
+        logger.setUseParentHandlers(false);
         CustomLogFormatter formatter = new CustomLogFormatter();
         ConsoleHandler handler = new ConsoleHandler();
         handler.setFormatter(formatter);
         logger.addHandler(handler);
 
-
-        if(!this.isLogOn){
+        if (!this.isLogOn) {
             logger.setLevel(Level.OFF);
         }
 
-
-        // get the parity byte
-        boolean foundParityByte = false;
-        byte frameParityByte =  0;
-        Iterator<Byte> byteIter = byteBuffer.iterator();
-        while(!foundParityByte && byteIter.hasNext()){
-            byte curr = byteIter.next();
-            if(curr == stopTag){
-                // parity is after the stop tag.
-                if(byteIter.hasNext()){
-                    frameParityByte = (byte) (byteIter.next() & 0xFF);
-                    foundParityByte = true;
-                }else{
-                    logger.warning("Parity Byte missing");
-                    // the tag after the frame should be present (byte Parity)
-                 return null;
-                }
-            }
-        }
-
-
         // Search for a start tag. Discard anything prior to it.
         boolean startTagFound = false;
+        byte parityByte = 0;
         Iterator<Byte> i = byteBuffer.iterator();
         while (!startTagFound && i.hasNext()) {
             byte current = i.next();
@@ -170,12 +179,22 @@ public class ParityDataLinkLayer extends DataLinkLayer {
                 i.remove();
             } else {
                 startTagFound = true;
+                if(i.hasNext()){
+                    parityByte = i.next();
+                    // remove the parity byte.
+                }
+                else{
+                    logger.severe("No parity byte found");
+                }
+                
             }
         }
 
+        logger.info("Parity byte: " + Integer.toBinaryString(parityByte & 0xff));
+
+        
         // If there is no start tag, then there is no frame.
         if (!startTagFound) {
-            // logger.log(Level.WARNING, "Missing start tag.");
             return null;
         }
 
@@ -198,7 +217,6 @@ public class ParityDataLinkLayer extends DataLinkLayer {
                     current = i.next();
                     extractedBytes.add(current);
                 } else {
-                    logger.info("No data after escape tag");
                     // An escape was the last byte available, so this is not a
                     // complete frame.
                     return null;
@@ -215,14 +233,10 @@ public class ParityDataLinkLayer extends DataLinkLayer {
 
         }
 
-        logger.info("Size of data: " + extractedBytes.size());
-
         // If there is no stop tag, then the frame is incomplete.
         if (!stopTagFound) {
-            logger.info("Missing stop tag");
             return null;
         }
-
 
         // Convert to the desired byte array.
         if (debug) {
@@ -232,7 +246,8 @@ public class ParityDataLinkLayer extends DataLinkLayer {
         int j = 0;
         i = extractedBytes.iterator();
         while (i.hasNext()) {
-            extractedData[j] = i.next();
+            byte curr_data = i.next();
+            extractedData[j] = curr_data;
             if (debug) {
                 System.out.printf("DumbDataLinkLayer.processFrame():\tbyte[%d] = %c\n",
                         j,
@@ -241,43 +256,48 @@ public class ParityDataLinkLayer extends DataLinkLayer {
             j += 1;
         }
 
-        logger.info("Got a whole frame: " + new String(extractedData));
-
-        if(!verifyParity(extractedData, frameParityByte)) return null;
+        if(!verifyParity(extractedData, parityByte)) return null;
 
         return extractedData;
 
     } // processFrame ()
       // ===============================================================
 
-      /**
-       * This method verifies the parity of  a byte
-       * Sample ([1001000 1100101 1101100 1101100 1101111 1101110 1101111 1110010]), 100 => true 
-       * because only arr[2] has an odd parity translating to 100.
-       * 
-       * @param data [1001000 1100101 1101100 1101100 1101111 1110111 1101111 1110010]
-       * @param parityByte 0
-       * @return true or false
-       * 
-       */
-      private boolean verifyParity(byte[] data, byte parityByte){
+    /**
+     * This method verifies the parity of a byte
+     * Sample ([1001000 1100101 1101100 1101100 1101111 1101110 1101111 1110010]),
+     * 100 => true
+     * because only arr[2] has an odd parity translating to 100.
+     * 
+     * @param data       [1001000 1100101 1101100 1101100 1101111 1110111 1101111
+     *                   1110010]
+     * @param parityByte 0
+     * @return true or false
+     * 
+     */
+    private boolean verifyParity(byte[] data, byte parityByte) {
         Logger logger = Logger.getLogger("Verify Parity");
-        logger.setUseParentHandlers(false);        
+        logger.setUseParentHandlers(false);
         CustomLogFormatter formatter = new CustomLogFormatter();
         ConsoleHandler handler = new ConsoleHandler();
         handler.setFormatter(formatter);
         logger.addHandler(handler);
 
-        if(!this.isLogOn){
+        if (!this.isLogOn) {
             logger.setLevel(Level.OFF);
         }
 
-        // should we discard the whole frame or 
-        for(int k = 0; k < data.length; k++){
+        // should we discard the whole frame or
+        for (int k = 0; k < data.length; k++) {
+            byte curr_data = data[k];
             int expectedParity = getBit(parityByte, k) > 0 ? 1 : 0;
-            int actualParity = checkParity(data[k]) ? 1 : 0;
-            
-            if(actualParity != expectedParity){
+            int actualParity = checkParity(curr_data) ? 1 : 0;
+
+            logger.info("position : " + k + " : " + String.valueOf((char) curr_data) + " => "
+                    + Integer.toBinaryString(curr_data & 0xFF) + " expected " + expectedParity + " vs actual : "
+                    + actualParity);
+
+            if (actualParity != expectedParity) {
                 String loggingMessage = "Frame " + new String(data) + " corrupted";
                 logger.severe(loggingMessage);
                 return false;
@@ -285,32 +305,50 @@ public class ParityDataLinkLayer extends DataLinkLayer {
         }
 
         return true;
-      }
+    }
 
-      /**
-       * Given a byte, return the bit in the ith position
-       * @param data 100
-       * @param position 2
-       * 
-       * return 1
-       * 
-       * @return bit in the ith position (right to left, 0 is right most and 7 is left most)
-       */
-      public int getBit(byte data, int position){
-        return (byte) ((data >> (7 - position)) & 1);
-      }
+    /**
+     * Given a byte, return the bit in the ith position
+     * 
+     * @param data     100
+     * @param position 2
+     * 
+     *                 return 1
+     * 
+     * @return bit in the ith position (left to right, 0 is leftmost and 7 is
+     *         rightmost)
+     */
+    public int getBit(byte data, int position) {
+        Logger logger = Logger.getLogger("Get Bit");
+        logger.setUseParentHandlers(false);
+        CustomLogFormatter formatter = new CustomLogFormatter();
+        ConsoleHandler handler = new ConsoleHandler();
+        handler.setFormatter(formatter);
+        logger.addHandler(handler);
 
-      
-    private String convertByteArrayToBinaryString(byte[] data){
-		String bytesSent = "";
-		for(byte b : data){ 
+        if (!this.isLogOn) {
+            logger.setLevel(Level.OFF);
+        }
+
+        logger.info("Parity Byte " + Integer.toBinaryString(data & 0xff) + " Position " + position);
+
+        byte returnByte = (byte) (((data & 0xff) >> (7 - position)) & 1);
+
+        logger.info("Return Byte " + Integer.toBinaryString(returnByte));
+
+        return returnByte;
+    }
+
+    private String convertByteArrayToBinaryString(byte[] data) {
+        String bytesSent = "";
+        for (byte b : data) {
             String byteString = String.format("%8s", Integer.toBinaryString(b & 0xFF));
-			bytesSent += byteString;
-		}
+            bytesSent += byteString;
+        }
 
-		return bytesSent;
+        return bytesSent;
 
-	}
+    }
 
     // ===============================================================
     private void cleanBufferUpTo(Iterator<Byte> end) {
