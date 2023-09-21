@@ -46,6 +46,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
         while (i < data.length) {
             int j = 0;
             // send buffer
+            // calculate the size of the buffer, 8 if it's full, the remainer if not.
             int sizeOfBuffer = (data.length - i) > data.length % 8 ? 8 : data.length % 8;
             logger.info("Print size of buffer:  " + sizeOfBuffer);
             byte[] sendBuffer = new byte[sizeOfBuffer];
@@ -57,6 +58,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
 
             }
 
+            // send the buffer one frame at a time.
             byte[] framedData = createFrame(sendBuffer);
             for (byte dataByte : framedData) {
                 transmit(dataByte);
@@ -121,6 +123,11 @@ public class ParityDataLinkLayer extends DataLinkLayer {
     } // createFrame ()
       // =========================================================================
 
+      /**
+       * 
+       * @param data
+       * @return true if parity is odd, false otherwise
+       */
     private boolean checkParity(byte data) {
         byte tempData = data;
 
@@ -154,6 +161,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
                 i.remove();
             } else {
                 startTagFound = true;
+                // grab the byte next to the start tag.
                 if(i.hasNext()){
                     parityByte = i.next();
                     // remove the parity byte.
@@ -280,7 +288,7 @@ public class ParityDataLinkLayer extends DataLinkLayer {
      * 
      *                 return 1
      * 
-     * @return bit in the ith position (left to right, 0 is leftmost and 7 is
+     * @return bit in the ith position (left to right, position 0 is leftmost and position 7 is
      *         rightmost)
      */
     public int getBit(byte data, int position) {
@@ -294,6 +302,11 @@ public class ParityDataLinkLayer extends DataLinkLayer {
         return returnByte;
     }
 
+    /**
+     * 
+     * @param data : bytes[]
+     * @return the string of 1s and 0s eight bytes at a time for debugging purposes.
+     */
     private String convertByteArrayToBinaryString(byte[] data) {
         String bytesSent = "";
         for (byte b : data) {
