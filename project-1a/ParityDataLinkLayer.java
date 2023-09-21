@@ -2,7 +2,6 @@
 // =============================================================================
 // IMPORTS
 import java.util.logging.ConsoleHandler;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Iterator;
@@ -22,31 +21,33 @@ import java.util.Queue;
  */
 public class ParityDataLinkLayer extends DataLinkLayer {
     private boolean isLogOn;
+    private Logger logger;
 
     public ParityDataLinkLayer() {
         this.isLogOn = debug;
-    }
-    // =============================================================================
-
-    @Override
-    public void send(byte[] data) {
-        Logger logger = Logger.getLogger("Send Data");
-        logger.setUseParentHandlers(false);
-        CustomLogFormatter formatter = new CustomLogFormatter();
-        ConsoleHandler handler = new ConsoleHandler();
-        handler.setFormatter(formatter);
-        logger.addHandler(handler);
+        logger = Logger.getLogger(this.getClass().getName());
+        // logger.setUseParentHandlers(false);
+        // CustomLogFormatter formatter = new CustomLogFormatter();
+        // ConsoleHandler handler = new ConsoleHandler();
+        // handler.setFormatter(formatter);
+        // logger.addHandler(handler);
 
         if (!this.isLogOn) {
             logger.setLevel(Level.OFF);
         }
 
+        
+    }
+    // =============================================================================
+
+    @Override
+    public void send(byte[] data) {
         int i = 0;
         while (i < data.length) {
             int j = 0;
             // send buffer
             int sizeOfBuffer = (data.length - i) > data.length % 8 ? 8 : data.length % 8;
-            System.out.println("Print size of buffer:  " + sizeOfBuffer);
+            logger.info("Print size of buffer:  " + sizeOfBuffer);
             byte[] sendBuffer = new byte[sizeOfBuffer];
             while (j < sizeOfBuffer) {
                 byte curr_data = data[i];
@@ -62,11 +63,8 @@ public class ParityDataLinkLayer extends DataLinkLayer {
             }
             
 
-            // logger.info("Send String: => " + new String(sendBuffer));
-            // logger.info("Send Bytes: => " + convertByteArrayToBinaryString(sendBuffer));
-
-            System.out.println("Send String: => " + new String(sendBuffer));
-            // System.out.println("Send Bytes: => " + convertByteArrayToBinaryString(sendBuffer));
+            logger.info("Send String: => " + new String(sendBuffer));
+            logger.info("Send Bytes: => " + convertByteArrayToBinaryString(sendBuffer));
 
         }
 
@@ -80,18 +78,6 @@ public class ParityDataLinkLayer extends DataLinkLayer {
      * @return A complete frame.
      */
     protected byte[] createFrame(byte[] data) {
-
-        Logger logger = Logger.getLogger("Create frame");
-        logger.setUseParentHandlers(false);
-        CustomLogFormatter formatter = new CustomLogFormatter();
-        ConsoleHandler handler = new ConsoleHandler();
-        handler.setFormatter(formatter);
-        logger.addHandler(handler);
-
-        if (!this.isLogOn) {
-            logger.setLevel(Level.OFF);
-        }
-
         byte parityByte = 0;
         // calculate the parity of the data.
         for (int i = 0; i < data.length; i++) {
@@ -128,9 +114,8 @@ public class ParityDataLinkLayer extends DataLinkLayer {
         }
 
         // logger.info("Processed " + new String(framedData));
-        System.out.println("Processed " + new String(framedData));
-        // System.out.println("Processed Bytes: " + convertByteArrayToBinaryString(framedData));
-
+        // logger.info("Processed Bytes: " + convertByteArrayToBinaryString(framedData));
+        
         return framedData;
 
     } // createFrame ()
@@ -158,16 +143,6 @@ public class ParityDataLinkLayer extends DataLinkLayer {
      *         data; <code>null</code> otherwise.
      */
     protected byte[] processFrame() {
-        Logger logger = Logger.getLogger("Process Frame");
-        logger.setUseParentHandlers(false);
-        CustomLogFormatter formatter = new CustomLogFormatter();
-        ConsoleHandler handler = new ConsoleHandler();
-        handler.setFormatter(formatter);
-        logger.addHandler(handler);
-
-        if (!this.isLogOn) {
-            logger.setLevel(Level.OFF);
-        }
 
         // Search for a start tag. Discard anything prior to it.
         boolean startTagFound = false;
@@ -276,16 +251,6 @@ public class ParityDataLinkLayer extends DataLinkLayer {
      * 
      */
     private boolean verifyParity(byte[] data, byte parityByte) {
-        Logger logger = Logger.getLogger("Verify Parity");
-        logger.setUseParentHandlers(false);
-        CustomLogFormatter formatter = new CustomLogFormatter();
-        ConsoleHandler handler = new ConsoleHandler();
-        handler.setFormatter(formatter);
-        logger.addHandler(handler);
-
-        if (!this.isLogOn) {
-            logger.setLevel(Level.OFF);
-        }
 
         // should we discard the whole frame or
         for (int k = 0; k < data.length; k++) {
@@ -319,16 +284,6 @@ public class ParityDataLinkLayer extends DataLinkLayer {
      *         rightmost)
      */
     public int getBit(byte data, int position) {
-        Logger logger = Logger.getLogger("Get Bit");
-        logger.setUseParentHandlers(false);
-        CustomLogFormatter formatter = new CustomLogFormatter();
-        ConsoleHandler handler = new ConsoleHandler();
-        handler.setFormatter(formatter);
-        logger.addHandler(handler);
-
-        if (!this.isLogOn) {
-            logger.setLevel(Level.OFF);
-        }
 
         logger.info("Parity Byte " + Integer.toBinaryString(data & 0xff) + " Position " + position);
 
