@@ -1,0 +1,20 @@
+// split this into 8 bits each
+11110010 01111110 01000000 1111011
+
+
+// number of zeros to append before the data is sent (length of generator - 1)
+
+// 4 bytes per frame 32 bits per frame
+// pick generator fro 32 bits per frame
+
+// add the zeros
+
+// divide
+
+// append to the end of the first 4 bits
+
+// send frame.
+
+
+
+
