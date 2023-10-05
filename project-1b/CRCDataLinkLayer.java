@@ -120,7 +120,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
          */
 
         System.out.println(convertByteArrayToBinaryString(data));
-        System.out.println("Remainder is " + convertByteArrayToBinaryString(new byte[]{getRemainder(data)}));
+        System.out.println("Remainder is " + convertByteArrayToBinaryString(new byte[]{getRemainder(data, polynomial)}));
         // System.out.println("Bit in pos " + 0 + " is  " + getBitFromByteArray(data, 0));
         // System.out.println("Bit in pos " + 1 + " is  " + getBitFromByteArray(data, 1));
         // System.out.println("Bit in pos " + 8 + " is  " + getBitFromByteArray(data, 8));
@@ -342,24 +342,16 @@ public class CRCDataLinkLayer extends DataLinkLayer {
      * @return remainder
      */
 
-     private byte getRemainder(byte[] data) {
-        
-        
-        // int counter = 0;
-        // given a byte array, and a generator do bit division
-        // data = {  01111101  00100000 01000100 01101111 01100101 01110011  00100000 01011100 0000000}
-        
-        // update counter; counter = 8
-        
+     private byte getRemainder(byte[] data, int generator) {
 
         // after loop, x is the remainder.
         // find the position of the most significant bit of the generator, generatorMostSigBit = 7
-        int generatorMostSigBit = getMostSigBitPosition(polynomial);
+        int generatorMostSigBit = getMostSigBitPosition(generator);
         // add these num of zeros to the data
         int maxLenOfData = (data.length * bitsPerByte) + generatorMostSigBit;
         int generatorLength = generatorMostSigBit + 1;
         // let x = data[0]; x = 01111101
-        int x = (int) data[0];
+        int x = (int) (data[0] & 0xFF);
         // update counter; counter = 8
         int counter = 8;
         // while counter < (array.length * bitsPerByte) + genMostSigBit
@@ -373,21 +365,52 @@ public class CRCDataLinkLayer extends DataLinkLayer {
         while(counter < maxLenOfData){
             int xMostSigBit = getMostSigBitPosition(x);
             int xLen = xMostSigBit + 1;
+            
             while(xLen < generatorLength && counter < maxLenOfData){
                 // fill up bits to get to len of the generator
                 x <<= 1;
-                x = x | getBitFromByteArray(data, counter);
+                x = (x | getBitFromByteArray(data, counter)) & 0xff;
                 // new len of x
                 xLen = getMostSigBitPosition(x) + 1;
                 counter += 1;
             }
+            // if x len is stil less than generator len, return
+            if(xLen < generatorLength) break;
             
-            x = x ^ polynomial;
+            // else calculate the xor value
+            x = x ^ generator;
         }
 
         return (byte) x;
     }
 
+    /**
+     * Given a byte array, add x number of bytes to 
+     * @param data
+     * @param addData
+     * @return
+     */
+    private byte[] addBytesToData(byte[] data, int addData){
+        // calculate how many bytes we need to add
+        int numBits = countBits(addData);
+        int quotient = numBits / bitsPerByte;
+        int remainder = numBits % bitsPerByte;
+        int additionalBytes = remainder > 0 ? quotient + 1 : quotient;
+        
+        byte[] new_data = new byte[data.length + additionalBytes];
+        for(int i = 0; i < data.length; i++){
+            if(remainder > 0 && i == data.length - 1){
+                
+                new_data[i] = (byte) (data[i] << (bitsPerByte - remainder));
+                break;
+            }
+            new_data[i] = data[i];
+        }
+
+
+        return new_data;
+
+    }
 
     private int countBits(int num){
         int count = 0;
