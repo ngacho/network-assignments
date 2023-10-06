@@ -1,6 +1,7 @@
 
 // =============================================================================
 // IMPORTS
+import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Arrays;
@@ -24,13 +25,13 @@ public class CRCDataLinkLayer extends DataLinkLayer {
     private Logger logger;
 
     public CRCDataLinkLayer() {
-        this.isLogOn = debug;
+        this.isLogOn = !debug;
         logger = Logger.getLogger(this.getClass().getName());
         logger.setUseParentHandlers(false);
-        // CustomLogFormatter formatter = new CustomLogFormatter();
-        // ConsoleHandler handler = new ConsoleHandler();
-        // handler.setFormatter(formatter);
-        // logger.addHandler(handler);
+        CustomLogFormatter formatter = new CustomLogFormatter();
+        ConsoleHandler handler = new ConsoleHandler();
+        handler.setFormatter(formatter);
+        logger.addHandler(handler);
 
         if (!this.isLogOn) {
             logger.setLevel(Level.OFF);
@@ -80,14 +81,14 @@ public class CRCDataLinkLayer extends DataLinkLayer {
      * @return A complete frame.
      */
     protected byte[] createFrame(byte[] data) {
-        logger.info("Data before remainder: " + convertByteArrayToBinaryString(data));
+        logger.info("Data without remainder: " + convertByteArrayToBinaryString(data));
         
         // max len of data is the total num of bits + num of bits in generator - 1.
         int maxLenOfData = (data.length * bitsPerByte) + (countBits(polynomial) - 1);
         int remainder = getCRCRemainder(data, polynomial, maxLenOfData);
-        logger.info("Remainder: " + remainder);
+        logger.info("Remainder: " + remainder + " => " + Integer.toBinaryString(remainder));
         byte[] new_data = addRemainderByteToData(data, remainder);
-        logger.info("Data after remainder: " + convertByteArrayToBinaryString(data));
+        logger.info("Data with remainder: " + convertByteArrayToBinaryString(new_data));
         
 
         // add start, parity, data, and stop tags
@@ -213,7 +214,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
         int numRemainderBytes = getNumOfRemainderBytes(polynomial);
 
 
-        logger.info("Data with remainder " +convertByteArrayToBinaryString(extractedData));
+        logger.info("Data with    remainder " +convertByteArrayToBinaryString(extractedData));
         extractedData = removeRemainderBytes(extractedData, numRemainderBytes);
         logger.info("Data without remainder " +convertByteArrayToBinaryString(extractedData));
 
@@ -442,12 +443,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
      *         rightmost)
      */
     public int getBit(byte data, int position) {
-
-        logger.info("Parity Byte " + Integer.toBinaryString(data & 0xff) + " Position " + position);
-
         byte returnByte = (byte) (((data & 0xff) >> (7 - position)) & 1);
-
-        logger.info("Return Byte " + Integer.toBinaryString(returnByte));
 
         return returnByte;
     }
