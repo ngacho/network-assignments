@@ -81,11 +81,14 @@ public class CRCDataLinkLayer extends DataLinkLayer {
      * @return A complete frame.
      */
     protected byte[] createFrame(byte[] data) {
+        logger.info("Data before remainder: " + convertByteArrayToBinaryString(data));
         
         // max len of data is the total num of bits + num of bits in generator - 1.
         int maxLenOfData = (data.length * bitsPerByte) + (countBits(polynomial) - 1);
         int remainder = getCRCRemainder(data, polynomial, maxLenOfData);
+        logger.info("Remainder: " + remainder);
         byte[] new_data = addRemainderByteToData(data, remainder);
+        logger.info("Data after remainder: " + convertByteArrayToBinaryString(data));
         
 
         // add start, parity, data, and stop tags
@@ -211,7 +214,9 @@ public class CRCDataLinkLayer extends DataLinkLayer {
         int numRemainderBytes = getNumOfRemainderBytes();
 
 
+        logger.info("Data with remainder " +convertByteArrayToBinaryString(extractedData));
         extractedData = removeRemainderBytes(extractedData, numRemainderBytes);
+        logger.info("Data without remainder " +convertByteArrayToBinaryString(extractedData));
 
         
 
