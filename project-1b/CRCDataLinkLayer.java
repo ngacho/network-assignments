@@ -120,7 +120,9 @@ public class CRCDataLinkLayer extends DataLinkLayer {
          */
 
         System.out.println(convertByteArrayToBinaryString(data));
-        System.out.println("Remainder is " + convertByteArrayToBinaryString(new byte[]{getRemainder(data, polynomial)}));
+        int maxLenOfData = (data.length * bitsPerByte) + (countBits(polynomial) - 1);
+        int remainder = getCRCRemainder(data, polynomial, maxLenOfData);
+        System.out.println("Remainder is " + remainder + " of size " + countBits(remainder) );
         // System.out.println("Bit in pos " + 0 + " is  " + getBitFromByteArray(data, 0));
         // System.out.println("Bit in pos " + 1 + " is  " + getBitFromByteArray(data, 1));
         // System.out.println("Bit in pos " + 8 + " is  " + getBitFromByteArray(data, 8));
@@ -334,21 +336,21 @@ public class CRCDataLinkLayer extends DataLinkLayer {
         return true;
     }
 
-    /**
-     * Given a byte array, divide by the generator and determine the remainder.
-     * 
-     * @param data
-     *
-     * @return remainder
-     */
 
-     private byte getRemainder(byte[] data, int generator) {
+
+
+    /**
+     * Given a byte array, a generator and a maximum length of the data
+     * @param data byte array
+     * @param generator
+     * @param maxLenOfData (varying depending on whether we are adding zeros or not)
+     * @return an int that's the remainder of the division.
+     */
+     private int getCRCRemainder(byte[] data, int generator, int maxLenOfData) {
 
         // after loop, x is the remainder.
         // find the position of the most significant bit of the generator, generatorMostSigBit = 7
         int generatorMostSigBit = getMostSigBitPosition(generator);
-        // add these num of zeros to the data
-        int maxLenOfData = (data.length * bitsPerByte) + generatorMostSigBit;
         int generatorLength = generatorMostSigBit + 1;
         // let x = data[0]; x = 01111101
         int x = (int) (data[0] & 0xFF);
@@ -369,7 +371,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
             while(xLen < generatorLength && counter < maxLenOfData){
                 // fill up bits to get to len of the generator
                 x <<= 1;
-                x = (x | getBitFromByteArray(data, counter)) & 0xff;
+                x = (x | getBitFromByteArray(data, counter));
                 // new len of x
                 xLen = getMostSigBitPosition(x) + 1;
                 counter += 1;
@@ -381,7 +383,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
             x = x ^ generator;
         }
 
-        return (byte) x;
+        return x;
     }
 
     /**
@@ -549,7 +551,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
     private final byte stopTag = (byte) '}';
     private final byte escapeTag = (byte) '\\';
     private final byte maxDataInFrame = 2;
-    private final int polynomial = 0x97;
+    private final int polynomial = 0x80F;
     private final int bitsPerByte = 8;
     // ===============================================================
 
