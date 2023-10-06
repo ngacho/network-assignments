@@ -4,6 +4,7 @@
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -81,46 +82,15 @@ public class CRCDataLinkLayer extends DataLinkLayer {
      */
     protected byte[] createFrame(byte[] data) {
         
-
-
-
-
-        /** 
-         * CRC Steps.
-         * First, we will add the zeros in the data unit part. 
-         * The length of the divisor is 4, 
-         * and we know that the length of the string 0s is always one less from its divisor.
-         *  So, we append three zeros in the data unit, i.e., 11100.
-         * After appending the zeros, the resultant string will be 11100000, 
-         * which we divide by the divisor, i.e., 1001. 
-         * We use the binary division process for dividing data unit by divisor.
-         * The remainder which we get after dividing the data unit by the divisor is referred to as CRC remainder.
-         * CRC remainder replaces the appended string of 0s at the end of the data unit, and the final string would be 11100111, 
-         * which is sent across the network.
-         */
-
-        
+        // max len of data is the total num of bits + num of bits in generator - 1.
         int maxLenOfData = (data.length * bitsPerByte) + (countBits(polynomial) - 1);
         int remainder = getCRCRemainder(data, polynomial, maxLenOfData);
         byte[] new_data = addRemainderByteToData(data, remainder);
         
-        
-        byte parityByte = 0;
-        // calculate the parity of the data.
-        for (int i = 0; i < data.length; i++) {
-            int parityBit = checkParity(data[i]) ? 1 : 0;
-            byte parityBitPositioned = (byte) (parityBit << ((maxDataInFrame - (i + 1))));
-            parityByte = (byte) (parityByte | parityBitPositioned);
-        }
-
-        logger.info("Frame received for data: " + new String(data));
-        logger.info("Frame received for bytes: " + convertByteArrayToBinaryString(data));
-        logger.info("Parity Byte is " + Integer.toBinaryString(parityByte & 0xff));
 
         // add start, parity, data, and stop tags
         Queue<Byte> framingData = new LinkedList<Byte>();
         framingData.add(startTag);
-        framingData.add(parityByte);
 
         for (byte dataByte : new_data) {
             if (dataByte == startTag || dataByte == stopTag || dataByte == escapeTag) {
@@ -140,29 +110,12 @@ public class CRCDataLinkLayer extends DataLinkLayer {
             framedData[j++] = byteIter.next();
         }
 
-        // logger.info("Processed " + new String(framedData));
-        // logger.info("Processed Bytes: " + convertByteArrayToBinaryString(framedData));
         
         return framedData;
 
     } // createFrame ()
       // =========================================================================
 
-      /**
-       * 
-       * @param data
-       * @return true if parity is odd, false otherwise
-       */
-    private boolean checkParity(byte data) {
-        byte tempData = data;
-
-        boolean parityFlag = false;
-        while (tempData != 0) {
-            tempData &= (tempData - 1);
-            parityFlag = !parityFlag;
-        }
-        return parityFlag;
-    }
     // =========================================================================
     /**
      * Determine whether the received, buffered data constitutes a complete
@@ -264,12 +217,39 @@ public class CRCDataLinkLayer extends DataLinkLayer {
         }
 
         if(!verifyCRC(extractedData)) return null;
+
+        // strip the remainder array and return the data.
+        int numRemainderBytes = getNumOfRemainderBytes();
+        System.out.println("Remainder occupies " + numRemainderBytes);
+
+        extractedData = removeRemainderBytes(extractedData, numRemainderBytes);
+
         
 
         return extractedData;
 
     } // processFrame ()
       // ===============================================================
+
+      private byte[] removeRemainderBytes(byte[] array, int n) {
+        if (n >= array.length) {
+            return new byte[0]; // Return an empty array if n is greater than or equal to the array length
+        }
+
+        int newSize = array.length - n;
+        byte[] result = Arrays.copyOf(array, newSize);
+        return result;
+    }
+
+
+    private int getNumOfRemainderBytes(){
+        int numGeneratorBits = countBits(polynomial);
+        int quotient = numGeneratorBits / bitsPerByte;
+        int remainder = numGeneratorBits % bitsPerByte;
+
+        return remainder > 0 ? quotient + 1 : quotient; 
+
+    }
 
     private boolean verifyCRC(byte[] data){
         int remainder = getCRCRemainder(data, polynomial, data.length * bitsPerByte);
@@ -341,6 +321,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
      * @return an int that's the remainder of the division.
      */
      private int getCRCRemainder(byte[] data, int generator, int maxLenOfData) {
+        System.out.println(convertByteArrayToBinaryString(data));
 
         // after loop, x is the remainder.
         // find the position of the most significant bit of the generator, generatorMostSigBit = 7
