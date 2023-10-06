@@ -210,7 +210,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
         if(!verifyCRC(extractedData)) return null;
 
         // strip the remainder array and return the data.
-        int numRemainderBytes = getNumOfRemainderBytes();
+        int numRemainderBytes = getNumOfRemainderBytes(polynomial);
 
 
         logger.info("Data with remainder " +convertByteArrayToBinaryString(extractedData));
@@ -224,6 +224,13 @@ public class CRCDataLinkLayer extends DataLinkLayer {
     } // processFrame ()
       // ===============================================================
 
+      /**
+       * Given an array and byte x, remove the remainder bytes
+       * Use the  getNumOfRemainderBytes function to detemine how many bytes to remove.
+       * @param array
+       * @param n
+       * @return
+       */
       private byte[] removeRemainderBytes(byte[] array, int n) {
         if (n >= array.length) {
             return new byte[0]; // Return an empty array if n is greater than or equal to the array length
@@ -235,8 +242,16 @@ public class CRCDataLinkLayer extends DataLinkLayer {
     }
 
 
-    private int getNumOfRemainderBytes(){
-        int numGeneratorBits = countBits(polynomial);
+
+    /**
+     * Given a polynomial, determine how many bytes the remainder from dividing by this polynomial uses
+     * 
+     * @param generator
+     * @return
+     */
+    
+    private int getNumOfRemainderBytes(int generator){
+        int numGeneratorBits = countBits(generator);
         int quotient = numGeneratorBits / bitsPerByte;
         int remainder = numGeneratorBits % bitsPerByte;
 
@@ -244,6 +259,11 @@ public class CRCDataLinkLayer extends DataLinkLayer {
 
     }
 
+    /**
+     * Given a byte of data, verify if the CRC division returns zero.
+     * @param data
+     * @return
+     */
     private boolean verifyCRC(byte[] data){
         int remainder = getCRCRemainder(data, polynomial, data.length * bitsPerByte);
         return remainder == 0;
