@@ -130,7 +130,6 @@ public class CRCDataLinkLayer extends DataLinkLayer {
 
         // Search for a start tag. Discard anything prior to it.
         boolean startTagFound = false;
-        byte parityByte = 0;
         Iterator<Byte> i = byteBuffer.iterator();
         while (!startTagFound && i.hasNext()) {
             byte current = i.next();
@@ -138,19 +137,9 @@ public class CRCDataLinkLayer extends DataLinkLayer {
                 i.remove();
             } else {
                 startTagFound = true;
-                // grab the byte next to the start tag.
-                if(i.hasNext()){
-                    parityByte = i.next();
-                    // remove the parity byte.
-                }
-                else{
-                    logger.severe("No parity byte found");
-                }
                 
             }
         }
-
-        logger.info("Parity byte: " + Integer.toBinaryString(parityByte & 0xff));
 
         
         // If there is no start tag, then there is no frame.
@@ -200,7 +189,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
 
         // Convert to the desired byte array.
         if (debug) {
-            System.out.println("DumbDataLinkLayer.processFrame(): Got whole frame!");
+            logger.info("DumbDataLinkLayer.processFrame(): Got whole frame!");
         }
         byte[] extractedData = new byte[extractedBytes.size()];
         int j = 0;
@@ -220,7 +209,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
 
         // strip the remainder array and return the data.
         int numRemainderBytes = getNumOfRemainderBytes();
-        System.out.println("Remainder occupies " + numRemainderBytes);
+
 
         extractedData = removeRemainderBytes(extractedData, numRemainderBytes);
 
@@ -253,8 +242,6 @@ public class CRCDataLinkLayer extends DataLinkLayer {
 
     private boolean verifyCRC(byte[] data){
         int remainder = getCRCRemainder(data, polynomial, data.length * bitsPerByte);
-
-        System.out.println("verify crc : Remainder " + remainder);
         return remainder == 0;
     }
 
@@ -321,7 +308,6 @@ public class CRCDataLinkLayer extends DataLinkLayer {
      * @return an int that's the remainder of the division.
      */
      private int getCRCRemainder(byte[] data, int generator, int maxLenOfData) {
-        System.out.println(convertByteArrayToBinaryString(data));
 
         // after loop, x is the remainder.
         // find the position of the most significant bit of the generator, generatorMostSigBit = 7
@@ -468,32 +454,6 @@ public class CRCDataLinkLayer extends DataLinkLayer {
         }
 
     }
-
-    /**
-     * Given a byte array, convert it into a single long consisting all the bytes provided
-     * 
-     * @param data
-     * @return
-     */
-    public long convertByteArrayToLong(byte[] data){
-        // for each byte, move 8 bits then shift
-        long result = 0;
-        int shift = 8;
-        for(byte dataByte : data){
-            result |= dataByte;
-            result <<= shift;
-        }
-
-        // shift back 8 bits as it'd have moved after the loop
-        result >>= shift;
-
-        System.out.println(result);
-
-        return result;
-
-
-    }
-    // ===============================================================
 
     // ===============================================================
     // DATA MEMBERS
