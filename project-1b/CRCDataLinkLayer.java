@@ -17,7 +17,7 @@ import java.util.Queue;
  *
  *       A data link layer that uses start/stop tags and byte packing to frame
  *       the
- *       data, and that performs no error management.
+ *       data, and that crc error management.
  */
 public class CRCDataLinkLayer extends DataLinkLayer {
     private boolean isLogOn;
