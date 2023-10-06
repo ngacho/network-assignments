@@ -1,7 +1,6 @@
 
 // =============================================================================
 // IMPORTS
-import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Arrays;
@@ -12,9 +11,9 @@ import java.util.Queue;
 
 // =============================================================================
 /**
- * @file ParityDataLinkLayer.java
+ * @file CRCDataLinkLayer.java
  * @author Brandon Ngacho (bngacho24@amherst.edu)
- * @date Sep 20, 2023.
+ * @date Wed Oct 4, 2023.
  *
  *       A data link layer that uses start/stop tags and byte packing to frame
  *       the
@@ -28,10 +27,10 @@ public class CRCDataLinkLayer extends DataLinkLayer {
         this.isLogOn = debug;
         logger = Logger.getLogger(this.getClass().getName());
         logger.setUseParentHandlers(false);
-        CustomLogFormatter formatter = new CustomLogFormatter();
-        ConsoleHandler handler = new ConsoleHandler();
-        handler.setFormatter(formatter);
-        logger.addHandler(handler);
+        // CustomLogFormatter formatter = new CustomLogFormatter();
+        // ConsoleHandler handler = new ConsoleHandler();
+        // handler.setFormatter(formatter);
+        // logger.addHandler(handler);
 
         if (!this.isLogOn) {
             logger.setLevel(Level.OFF);
