@@ -84,23 +84,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
      * @return A complete frame.
      */
     protected byte[] createFrame(byte[] data) {
-        // find the position of the most significant bit of the generator, generatorMostSigBit = 7
-        // add these num of zeros to the data
-        // int counter = 0;
-        // given a byte array, and a generator do bit division
-        // data = {  01111101  00100000 01000100 01101111 01100101 01110011  00100000 01011100 0000000}
-        // let x = data[0]; x = 01111101
-        // update counter; counter = 8
-        // while counter < (array.length * bitsPerByte) + genMostSigBit
-            // find the index of first 1 in x (7 left most, 0 right most) => i = 6
-            // while numbits < numBitsOfGenerator
-                // shift x << (generatorMostSigBit - i), x = 11111010
-                // or x with the next bit x = x | bitAt(counter)
-                // update the counter; x = x + 1
-            // xor with the generator and update this value to be x.; x = x ^ generator
-        // repeat
-
-        // after loop, x is the remainder.
+        
 
 
 
@@ -119,23 +103,11 @@ public class CRCDataLinkLayer extends DataLinkLayer {
          * which is sent across the network.
          */
 
-        System.out.println(convertByteArrayToBinaryString(data));
+        
         int maxLenOfData = (data.length * bitsPerByte) + (countBits(polynomial) - 1);
         int remainder = getCRCRemainder(data, polynomial, maxLenOfData);
-        System.out.println("Remainder is " + remainder + " of size " + countBits(remainder) );
-        // System.out.println("Bit in pos " + 0 + " is  " + getBitFromByteArray(data, 0));
-        // System.out.println("Bit in pos " + 1 + " is  " + getBitFromByteArray(data, 1));
-        // System.out.println("Bit in pos " + 8 + " is  " + getBitFromByteArray(data, 8));
-        // System.out.println("Bit in pos " + 10 + " is  " + getBitFromByteArray(data, 10));
-
+        byte[] new_data = addRemainderByteToData(data, remainder);
         
-
-
-        // do cyclic redudancy check.
-
-        // use an output stream
-
-        // 
         
         byte parityByte = 0;
         // calculate the parity of the data.
@@ -154,7 +126,7 @@ public class CRCDataLinkLayer extends DataLinkLayer {
         framingData.add(startTag);
         framingData.add(parityByte);
 
-        for (byte dataByte : data) {
+        for (byte dataByte : new_data) {
             if (dataByte == startTag || dataByte == stopTag || dataByte == escapeTag) {
                 // add escape tag first
                 framingData.add(escapeTag);
@@ -295,47 +267,73 @@ public class CRCDataLinkLayer extends DataLinkLayer {
             j += 1;
         }
 
-        if(!verifyParity(extractedData, parityByte)) return null;
+        if(!verifyCRC(extractedData)) return null;
+        
 
         return extractedData;
 
     } // processFrame ()
       // ===============================================================
 
-    /**
-     * This method verifies the parity of a byte
-     * Sample ([1001000 1100101 1101100 1101100 1101111 1101110 1101111 1110010]),
-     * 100 => true
-     * because only arr[2] has an odd parity translating to 100.
-     * 
-     * @param data       [1001000 1100101 1101100 1101100 1101111 1110111 1101111
-     *                   1110010]
-     * @param parityByte 0
-     * @return true or false
-     * 
-     */
-    private boolean verifyParity(byte[] data, byte parityByte) {
+    private boolean verifyCRC(byte[] data){
+        int remainder = getCRCRemainder(data, polynomial, data.length * bitsPerByte);
 
-        // should we discard the whole frame or
-        for (int k = 0; k < data.length; k++) {
-            byte curr_data = data[k];
-            int expectedParity = getBit(parityByte, k) > 0 ? 1 : 0;
-            int actualParity = checkParity(curr_data) ? 1 : 0;
-
-            logger.info("position : " + k + " : " + String.valueOf((char) curr_data) + " => "
-                    + Integer.toBinaryString(curr_data & 0xFF) + " expected " + expectedParity + " vs actual : "
-                    + actualParity);
-
-            if (actualParity != expectedParity) {
-                String loggingMessage = "Frame " + new String(data) + " corrupted";
-                logger.severe(loggingMessage);
-                return false;
-            }
-        }
-
-        return true;
+        System.out.println("verify crc : Remainder " + remainder);
+        return remainder == 0;
     }
 
+    /**
+     * Given a remainder int, convert it into a byte array.
+     * 
+     * @param remainder
+     * @return
+     */
+    private byte[] convertRemainderIntoByteArray(int remainder){
+        
+        // calculate the shift size
+        int shiftSize = bitsPerByte - (countBits(polynomial) - 1) % bitsPerByte;
+        // shift the remainder by the remaining zeros towards the end
+        remainder <<= shiftSize;
+        // Calculate the number of bytes required for the new remainder
+        int numBytes = (int) Math.ceil((double) countBits(remainder) / 8);
+
+
+        byte[] byteArray = new byte[numBytes];
+
+        for (int i = numBytes - 1; i >= 0; i--) {
+            byteArray[i] = (byte) (remainder & 0xFF); // Extract the least significant byte
+            remainder >>= 8; // Shift the integer to the right by 8 bits
+        }
+    
+        return byteArray;
+        
+    }
+
+    /*
+     * Given a byte array and a remainder int, 
+     * convert the int into a series of bytes such that they match the position where the extra zeros were in the data
+     * then add these extra bytes to the data
+     * 
+     * return a byte array
+     */
+    private byte[] addRemainderByteToData(byte[] data, int remainder){
+        byte[] remainderByteArray = convertRemainderIntoByteArray(remainder);
+
+        byte[] new_data = new byte[remainderByteArray.length + data.length];
+        for(int i = 0; i < data.length; i++){
+            new_data[i] = data[i];
+        }
+
+        int size = data.length;
+
+        for(int j = 0; j < remainderByteArray.length; j++){
+            new_data[size + j] = remainderByteArray[j];
+        }
+
+
+        return new_data;
+
+    }
 
 
 
@@ -386,34 +384,13 @@ public class CRCDataLinkLayer extends DataLinkLayer {
         return x;
     }
 
+
+
     /**
-     * Given a byte array, add x number of bytes to 
-     * @param data
-     * @param addData
+     * Given a number, calculate the number of bits in the number. include the unset bits.
+     * @param num
      * @return
      */
-    private byte[] addBytesToData(byte[] data, int addData){
-        // calculate how many bytes we need to add
-        int numBits = countBits(addData);
-        int quotient = numBits / bitsPerByte;
-        int remainder = numBits % bitsPerByte;
-        int additionalBytes = remainder > 0 ? quotient + 1 : quotient;
-        
-        byte[] new_data = new byte[data.length + additionalBytes];
-        for(int i = 0; i < data.length; i++){
-            if(remainder > 0 && i == data.length - 1){
-                
-                new_data[i] = (byte) (data[i] << (bitsPerByte - remainder));
-                break;
-            }
-            new_data[i] = data[i];
-        }
-
-
-        return new_data;
-
-    }
-
     private int countBits(int num){
         int count = 0;
         while (num != 0) {
@@ -550,8 +527,8 @@ public class CRCDataLinkLayer extends DataLinkLayer {
     private final byte startTag = (byte) '{';
     private final byte stopTag = (byte) '}';
     private final byte escapeTag = (byte) '\\';
-    private final byte maxDataInFrame = 2;
-    private final int polynomial = 0x80F;
+    private final byte maxDataInFrame = 8;
+    private final int polynomial = 0x97;
     private final int bitsPerByte = 8;
     // ===============================================================
 
