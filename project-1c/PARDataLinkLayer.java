@@ -261,24 +261,49 @@ public class PARDataLinkLayer extends DataLinkLayer {
     // =========================================================================
 
 
+private String convertByteArrayToBinaryString(byte[] data) {
+        String bytes = "";
+        for (byte b : data) {
+            String byteString = String.format("%8s", Integer.toBinaryString(b & 0xFF));
+            bytes += byteString;
+        }
+
+        return bytes;
+
+    }
+
+    private String convertByteQueueToBinaryString(Queue<Byte> data) {
+        String bytes = "";
+
+        while(data.size() > 0){
+            String byteString = String.format("%8s", Integer.toBinaryString(data.remove() & 0xFF));
+            bytes += byteString;
+
+        }
+
+        return bytes;
+
+    }
 
     // =========================================================================
     // DATA MEMBERS
 
     /** The start tag. */
-    private final byte startTag  = (byte)'{';
+    private final byte startTag = (byte) '{';
 
     /** The stop tag. */
-    private final byte stopTag   = (byte)'}';
+    private final byte stopTag = (byte) '}';
 
     /** The escape tag. */
-    private final byte escapeTag = (byte)'\\';
+    private final byte escapeTag = (byte) '\\';
     // =========================================================================
 
 
+    public enum DataLinkLayerRole{
+        SENDER,
+        RECEIVER
+    }
 
-
-// =============================================================================
+    // =============================================================================
 } // class ParityDataLinkLayer
-// =============================================================================
-
+  // =============================================================================
