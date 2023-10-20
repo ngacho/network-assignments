@@ -65,6 +65,8 @@ public class PARDataLinkLayer extends DataLinkLayer {
         // End with a stop tag.
         framingData.add(stopTag);
 
+        System.out.printf("\n%s Created Frame %d", this.dataLinkLayerRole, this.frameCount);
+
         return framingData;
 
     } // createFrame ()
@@ -152,7 +154,7 @@ public class PARDataLinkLayer extends DataLinkLayer {
         byte receivedParity = extractedBytes.remove(extractedBytes.size() - 1);
         byte calculatedParity = calculateParity(extractedBytes);
         if (receivedParity != calculatedParity) {
-            System.out.printf("ParityDataLinkLayer.processFrame():\tDamaged frame\n");
+            System.out.printf("\n%s ParityDataLinkLayer.processFrame():\t Frame %d damaged", this.dataLinkLayerRole, this.frameCount);
             return null;
         }
 
@@ -263,9 +265,10 @@ public class PARDataLinkLayer extends DataLinkLayer {
     }
 
     private String convertByteQueueToBinaryString(Queue<Byte> data) {
+        Iterator<Byte> it = data.iterator();
         String bytes = "";
 
-        while (data.size() > 0) {
+        while (it.hasNext()) {
             String byteString = String.format("%8s", Integer.toBinaryString(data.remove() & 0xFF));
             bytes += byteString;
 
@@ -290,6 +293,11 @@ public class PARDataLinkLayer extends DataLinkLayer {
 
     /** Role of the instance of this class */
     private DataLinkLayerRole dataLinkLayerRole = DataLinkLayerRole.RECEIVER;
+
+    /**
+     * Keep count of the number of frame
+     */
+    private int frameCount = 0;
 
     public enum DataLinkLayerRole {
         SENDER,
