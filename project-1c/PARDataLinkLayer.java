@@ -34,15 +34,21 @@ public class PARDataLinkLayer extends DataLinkLayer {
          */
         this.dataLinkLayerRole = DataLinkLayerRole.SENDER;
 
-        // Calculate the parity.
-        byte parity = calculateParity(data);
+        LinkedList<Byte> frame = new LinkedList<Byte>();
+        // add the ack byte and the frame number at the top of the linked list
+        frame.add((byte) 0);
+        frame.add((byte) this.frameCount);
+        // add the rest of the data
+        frame.addAll(data);
+
+        byte parity = calculateParity(frame);
 
         // Begin with the start tag.
         Queue<Byte> framingData = new LinkedList<Byte>();
         framingData.add(startTag);
 
         // Add each byte of original data.
-        for (byte currentByte : data) {
+        for (byte currentByte : frame) {
 
             // If the current data byte is itself a metadata tag, then precede
             // it with an escape tag.
@@ -64,8 +70,6 @@ public class PARDataLinkLayer extends DataLinkLayer {
 
         // End with a stop tag.
         framingData.add(stopTag);
-
-        System.out.printf("\n<%s> Created Frame %d", this.dataLinkLayerRole, this.frameCount);
 
         return framingData;
 
