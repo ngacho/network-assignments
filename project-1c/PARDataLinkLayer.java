@@ -172,43 +172,42 @@ public class PARDataLinkLayer extends DataLinkLayer {
                     return null;
 
             }
-            
+
         }
 
-        switch(this.dataLinkLayerRole){
+        switch (this.dataLinkLayerRole) {
             case SENDER:
                 System.out.printf("\n<%s> Processed Ack %d", this.dataLinkLayerRole, this.frameCount);
                 break;
             case RECEIVER:
                 System.out.printf("\n<%s> Processed Frame %d", this.dataLinkLayerRole, this.frameCount);
                 break;
-                
+
         }
-        
 
         return extractedBytes;
 
     } // processFrame ()
       // =========================================================================
 
-      /**
-	 * Extract the next frame-worth of data from the sending buffer, frame it,
-	 * and then send it.
-	 *
-	 * @return the frame of bytes transmitted.
-	 */
-	@Override
-	protected Queue<Byte> sendNextFrame() {
+    /**
+     * Extract the next frame-worth of data from the sending buffer, frame it,
+     * and then send it.
+     *
+     * @return the frame of bytes transmitted.
+     */
+    @Override
+    protected Queue<Byte> sendNextFrame() {
         // if we didn't receive a confirmation on the last frame
         // don't do anything.
-		if (this.dataLinkLayerRole == DataLinkLayerRole.SENDER && this.awaitingAck) {
-			return null;
-		}
+        if (this.dataLinkLayerRole == DataLinkLayerRole.SENDER && this.awaitingAck) {
+            return null;
+        }
 
-		// Extract a frame-worth of data from the sending buffer.
-		return super.sendNextFrame();
+        // Extract a frame-worth of data from the sending buffer.
+        return super.sendNextFrame();
 
-	}
+    }
 
     // =========================================================================
     /**
@@ -232,7 +231,6 @@ public class PARDataLinkLayer extends DataLinkLayer {
 
         System.out.printf("\n<%s> Frame sent: %s", this.dataLinkLayerRole, convertByteQueueToBinaryString(frame));
 
-
     } // finishFrameSend ()
       // =========================================================================
 
@@ -246,73 +244,76 @@ public class PARDataLinkLayer extends DataLinkLayer {
      */
     protected void finishFrameReceive(Queue<Byte> frame) {
         // COMPLETE ME WITH FLOW CONTROL
-        if(frame.size() < 2) return;
-        if(this.dataLinkLayerRole == DataLinkLayerRole.SENDER && this.awaitingAck){
+        if (frame.size() < 2)
+            return;
+        if (this.dataLinkLayerRole == DataLinkLayerRole.SENDER && this.awaitingAck) {
 
-            if(acknowledgeACK(frame)){
+            if (acknowledgeACK(frame)) {
                 this.awaitingAck = false;
                 // increment frame count (move to be in accordance with ack)
                 this.frameCount = (this.frameCount + 1) % MAX_FRAME_COUNT;
-            return;
-        }
+                return;
+            }
 
-        String frameReceived = convertByteQueueToBinaryString(frame);
+            String frameReceived = convertByteQueueToBinaryString(frame);
 
-        // remove the ack bit
-        frame.remove();
-        int frameNum = frame.remove();
+            // remove the ack bit
+            frame.remove();
+            int frameNum = frame.remove();
 
-        // if the frame number is less than the current frame count (frame num we expecting)
-        if(frameNum < this.frameCount){
-            System.out.printf("\n<%s> Received duplicate frame %d", this.dataLinkLayerRole, frameNum);
-            System.out.printf("\n<%s> Frame received: %s", this.dataLinkLayerRole, frameReceived);
+            // if the frame number is less than the current frame count (frame num we
+            // expecting)
+            if (frameNum < this.frameCount) {
+                System.out.printf("\n<%s> Received duplicate frame %d", this.dataLinkLayerRole, frameNum);
+                System.out.printf("\n<%s> Frame received: %s", this.dataLinkLayerRole, frameReceived);
+                // send an ack.
+                transmit(createAck(frameNum));
+                return;
+            }
+
+            // Deliver frame to the client.
+            byte[] deliverable = new byte[frame.size()];
+            for (int i = 0; i < deliverable.length; i += 1) {
+                deliverable[i] = frame.remove();
+            }
+
+            client.receive(deliverable);
+            System.out.printf("\n<%s> Received frame %d", this.dataLinkLayerRole, frameNum);
             // send an ack.
+
             transmit(createAck(frameNum));
-            return;
+
+            // increment frame count
+            this.frameCount = (this.frameCount + 1) % MAX_FRAME_COUNT;
+
+            System.out.printf("\n<%s> Frame received: %s", this.dataLinkLayerRole, frameReceived);
         }
-
-        // Deliver frame to the client.
-        byte[] deliverable = new byte[frame.size()];
-        for (int i = 0; i < deliverable.length; i += 1) {
-            deliverable[i] = frame.remove();
-        }
-
-        client.receive(deliverable);
-        System.out.printf("\n<%s> Received frame %d", this.dataLinkLayerRole, frameNum);
-        // send an ack.
-        
-        transmit(createAck(frameNum));
-
-        // increment frame count
-        this.frameCount = (this.frameCount + 1) % MAX_FRAME_COUNT;
-
-        System.out.printf("\n<%s> Frame received: %s", this.dataLinkLayerRole, frameReceived);
 
     } // finishFrameReceive ()
       // =========================================================================
 
-
-      private boolean acknowledgeACK(Queue<Byte> frame){
+    private boolean acknowledgeACK(Queue<Byte> frame) {
         Iterator<Byte> i = frame.iterator();
         byte ack = -1;
         int frameNum = -1;
-        if(i.hasNext()){
+        if (i.hasNext()) {
             ack = i.next();
-            if(i.hasNext()){
+            if (i.hasNext()) {
                 frameNum = (int) i.next();
             }
         }
-                
+
         return ack == 1 && frameNum == this.frameCount;
 
-      }
+    }
 
-      /**
-       * Create an ack frame
-       * @param frameNum the frame number to ack
-       * @return
-       */
-      private Queue<Byte> createAck(int frameNum){
+    /**
+     * Create an ack frame
+     * 
+     * @param frameNum the frame number to ack
+     * @return
+     */
+    private Queue<Byte> createAck(int frameNum) {
         System.out.printf("\n<%s> Sending Ack %d", this.dataLinkLayerRole, frameNum);
         // set is ack to true
         byte ackHeader = 1;
@@ -365,21 +366,22 @@ public class PARDataLinkLayer extends DataLinkLayer {
 
         // COMPLETE ME WITH FLOW CONTROL
         // System.out.printf("\nchecking timeout %d", this.frameCount );
-        if(this.awaitingAck && (System.currentTimeMillis() - this.timeFrameSent) > 100){
+        if (this.awaitingAck && (System.currentTimeMillis() - this.timeFrameSent) > 100) {
             System.out.printf("\n<%s> Timeout on frame %d", this.dataLinkLayerRole, this.frameCount);
-            resend();    
-            System.out.printf("\n<%s> Resending Frame: %s", this.dataLinkLayerRole, convertByteQueueToBinaryString(bufferedFrame));
-        
+            resend();
+            System.out.printf("\n<%s> Resending Frame: %s", this.dataLinkLayerRole,
+                    convertByteQueueToBinaryString(bufferedFrame));
+
         }
 
     } // checkTimeout ()
-    // =========================================================================
+      // =========================================================================
 
     /**
-     * Resend the frame due to timeout. 
+     * Resend the frame due to timeout.
      * Time is reset in the finish frame send.
      */
-    private void resend(){
+    private void resend() {
         // resend frame
         transmit(this.bufferedFrame);
         // finish sending frame
