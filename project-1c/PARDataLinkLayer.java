@@ -154,6 +154,9 @@ public class PARDataLinkLayer extends DataLinkLayer {
             System.out.println("ParityDataLinkLayer.processFrame(): Got whole frame!");
         }
 
+        // if the bytes are less than 2 (2 header bytes) then return null as it's a damaged frame.
+
+        if(extractedBytes.size() < 2) return null;
         int frameNum = extractedBytes.get(1);
 
         // The final byte inside the frame is the parity. Compare it to a
@@ -243,51 +246,51 @@ public class PARDataLinkLayer extends DataLinkLayer {
      * @param frame The frame of bytes received.
      */
     protected void finishFrameReceive(Queue<Byte> frame) {
-        // COMPLETE ME WITH FLOW CONTROL
-        if (frame.size() < 2)
-            return;
         if (this.dataLinkLayerRole == DataLinkLayerRole.SENDER && this.awaitingAck) {
 
             if (acknowledgeACK(frame)) {
                 this.awaitingAck = false;
                 // increment frame count (move to be in accordance with ack)
                 this.frameCount = (this.frameCount + 1) % MAX_FRAME_COUNT;
-                return;
             }
-
-            String frameReceived = convertByteQueueToBinaryString(frame);
-
-            // remove the ack bit
-            frame.remove();
-            int frameNum = frame.remove();
-
-            // if the frame number is less than the current frame count (frame num we
-            // expecting)
-            if (frameNum < this.frameCount) {
-                System.out.printf("\n<%s> Received duplicate frame %d", this.dataLinkLayerRole, frameNum);
-                System.out.printf("\n<%s> Frame received: %s", this.dataLinkLayerRole, frameReceived);
-                // send an ack.
-                transmit(createAck(frameNum));
-                return;
-            }
-
-            // Deliver frame to the client.
-            byte[] deliverable = new byte[frame.size()];
-            for (int i = 0; i < deliverable.length; i += 1) {
-                deliverable[i] = frame.remove();
-            }
-
-            client.receive(deliverable);
-            System.out.printf("\n<%s> Received frame %d", this.dataLinkLayerRole, frameNum);
-            // send an ack.
-
-            transmit(createAck(frameNum));
-
-            // increment frame count
-            this.frameCount = (this.frameCount + 1) % MAX_FRAME_COUNT;
-
-            System.out.printf("\n<%s> Frame received: %s", this.dataLinkLayerRole, frameReceived);
+            return;
         }
+
+        String frameReceived = convertByteQueueToBinaryString(frame);
+        // COMPLETE ME WITH FLOW CONTROL
+        if (frame.size() < 2)
+            return;
+
+        // remove the ack bit
+        frame.remove();
+        int frameNum = frame.remove();
+
+        // if the frame number is less than the current frame count (frame num we
+        // expecting)
+        if (frameNum < this.frameCount) {
+            System.out.printf("\n<%s> Received duplicate frame %d", this.dataLinkLayerRole, frameNum);
+            System.out.printf("\n<%s> Frame received: %s", this.dataLinkLayerRole, frameReceived);
+            // send an ack.
+            transmit(createAck(frameNum));
+            return;
+        }
+
+        // Deliver frame to the client.
+        byte[] deliverable = new byte[frame.size()];
+        for (int i = 0; i < deliverable.length; i += 1) {
+            deliverable[i] = frame.remove();
+        }
+
+        client.receive(deliverable);
+        System.out.printf("\n<%s> Received frame %d", this.dataLinkLayerRole, frameNum);
+        // send an ack.
+
+        transmit(createAck(frameNum));
+
+        // increment frame count
+        this.frameCount = (this.frameCount + 1) % MAX_FRAME_COUNT;
+
+        System.out.printf("\n<%s> Frame received: %s", this.dataLinkLayerRole, frameReceived);
 
     } // finishFrameReceive ()
       // =========================================================================
@@ -488,7 +491,7 @@ public class PARDataLinkLayer extends DataLinkLayer {
     /*
      * max size of the frame counter due to 8 bits
      */
-    private final int MAX_FRAME_COUNT = 128;
+    private final int MAX_FRAME_COUNT = 64;
 
     /**
      * buffered frame
