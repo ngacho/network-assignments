@@ -245,19 +245,18 @@ public class PARDataLinkLayer extends DataLinkLayer {
      * @param frame The frame of bytes received.
      */
     protected void finishFrameReceive(Queue<Byte> frame) {
+        // COMPLETE ME WITH FLOW CONTROL
+        if(frame.size() < 2) return;
         if(this.dataLinkLayerRole == DataLinkLayerRole.SENDER && this.awaitingAck){
 
             if(acknowledgeACK(frame)){
                 this.awaitingAck = false;
                 // increment frame count (move to be in accordance with ack)
                 this.frameCount = (this.frameCount + 1) % MAX_FRAME_COUNT;
-            }
             return;
         }
 
         String frameReceived = convertByteQueueToBinaryString(frame);
-        // COMPLETE ME WITH FLOW CONTROL
-        if(frame.size() < 2) return;
 
         // remove the ack bit
         frame.remove();
