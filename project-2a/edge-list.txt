@@ -1,2 +1,2 @@
-A B 20
-B C 20
+Earth Venus 20
+Venus Mercury 20

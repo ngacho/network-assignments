@@ -1,6 +1,6 @@
 
 dumb: compile
-	java Simulator Perfect Dumb Random edge-links.txt Venus Jupiter message.txt
+	java Simulator Perfect Dumb Random edge-list.txt Earth Mercury message.txt
 
 clean:
 	rm *.class
