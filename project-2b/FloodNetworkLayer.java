@@ -62,6 +62,10 @@ public class FloodNetworkLayer extends NetworkLayer {
      * @return the sequence of bytes that comprises the packet.
      */
     protected byte[] createPacket(int destination, byte[] data) {
+        // packet structure
+        // hopcount, length, length, length, length, source, source, source, source, dest, dest, dest, dest
+        // packet length = 13
+
         // add a hopcount of 6.
         byte[] hopCount = new byte[] { (byte) 10 };
         logger.info("Creating a packet");
@@ -76,7 +80,7 @@ public class FloodNetworkLayer extends NetworkLayer {
         byte[] packetData = unpackByteArrays(hopCount, packetLengthAsByteArray, sourceAsByteArray, destAsByteArray,
                 data);
 
-        logger.info("Packet of size " + packetData.length + " bytes created");
+        logger.info("Packet of size " + packetData.length + " bytes created");   
 
         return packetData;
 
@@ -190,6 +194,7 @@ public class FloodNetworkLayer extends NetworkLayer {
         // remove the first byte
         int hopCount = (int) packetsBuffer.remove();
         logger.info("Hop count: " + hopCount);
+        logger.info("Bytes per header: " + bytesPerHeader);
 
         // COMPLETE ME
         // extract length array from unpacked data
@@ -324,19 +329,20 @@ public class FloodNetworkLayer extends NetworkLayer {
 
 
     /** The offset into the header for the length. */
-    public static final int lengthOffset = 0;
+    public static final int hopCountOffset = 0; // 0
     
-    public static final int hopCountOffset = lengthOffset + 1;
-
+    public static final int packetCountOffset = hopCountOffset + 1; // 1
 
     /** The offset into the header for the source address. */
-    public static final int sourceOffset = hopCountOffset + Integer.BYTES;
+    public static final int sourceOffset = packetCountOffset + Integer.BYTES; // 5
 
     /** The offset into the header for the destination address. */
-    public static final int destinationOffset = sourceOffset + Integer.BYTES;
+    public static final int destinationOffset = sourceOffset + Integer.BYTES; // 9
 
     /** How many total bytes per header. */
-    public static final int bytesPerHeader = destinationOffset + Integer.BYTES;
+    public static final int bytesPerHeader = destinationOffset + Integer.BYTES; // 13
+
+    
 
     /** Whether to emit debugging information. */
     public static final boolean debug = false;
