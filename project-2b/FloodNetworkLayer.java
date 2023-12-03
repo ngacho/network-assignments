@@ -1,11 +1,10 @@
 // =============================================================================
 // IMPORTS
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
@@ -73,11 +72,14 @@ public class FloodNetworkLayer extends NetworkLayer {
         // COMPLETE ME
         byte[] packetLengthAsByteArray = intToByteArray(data.length + bytesPerHeader);
 
+        // forwarded from
+        byte[] forwardedFromArray = intToByteArray(this.address);
+
         byte[] sourceAsByteArray = intToByteArray(this.address);
         byte[] destAsByteArray = intToByteArray(destination);
 
         // split destination into bytes
-        byte[] packetData = unpackByteArrays(hopCount, packetLengthAsByteArray, sourceAsByteArray, destAsByteArray,
+        byte[] packetData = unpackByteArrays(hopCount, packetLengthAsByteArray, forwardedFromArray, sourceAsByteArray, destAsByteArray,
                 data);
 
         logger.info("Packet of size " + packetData.length + " bytes created");   
@@ -147,10 +149,24 @@ public class FloodNetworkLayer extends NetworkLayer {
 
         // convert destination to int
 
+        int forwardedFrom = byteArrayToInt(Arrays.copyOfRange(packet, forwardedFromOffset, sourceOffset));
+
+        int source = byteArrayToInt(Arrays.copyOfRange(packet, sourceOffset, destinationOffset));
+
+        // change forwarded from
+        byte[] forwardedFromArray = intToByteArray(this.address);
+        for (int i = 0; i < Integer.BYTES; i++) {
+            packet[forwardedFromOffset + i] = forwardedFromArray[i];
+        }
+
         // // get all the links
-        Collection<DataLinkLayer> links = this.dataLinkLayers.values();
+        Map<Integer, DataLinkLayer> links = this.dataLinkLayers;
         // for each link
-        for (DataLinkLayer link : links) {
+        for (Map.Entry<Integer, DataLinkLayer> entry : links.entrySet()) {
+            int address = entry.getKey();
+            DataLinkLayer link = entry.getValue();
+            if(address == forwardedFrom || address == source) continue;
+            
             // send the packet
             link.send(packet);
         }
@@ -333,14 +349,16 @@ public class FloodNetworkLayer extends NetworkLayer {
     
     public static final int packetCountOffset = hopCountOffset + 1; // 1
 
+    public static final int forwardedFromOffset = packetCountOffset + Integer.BYTES; // 5
+
     /** The offset into the header for the source address. */
-    public static final int sourceOffset = packetCountOffset + Integer.BYTES; // 5
+    public static final int sourceOffset = forwardedFromOffset + Integer.BYTES; // 9
 
     /** The offset into the header for the destination address. */
-    public static final int destinationOffset = sourceOffset + Integer.BYTES; // 9
+    public static final int destinationOffset = sourceOffset + Integer.BYTES; // 13
 
     /** How many total bytes per header. */
-    public static final int bytesPerHeader = destinationOffset + Integer.BYTES; // 13
+    public static final int bytesPerHeader = destinationOffset + Integer.BYTES; // 17
 
     
 
